@@ -36,6 +36,7 @@ const optionsHandler = httpAction(async () => {
 http.route({ path: "/tickets", method: "OPTIONS", handler: optionsHandler });
 http.route({ path: "/tickets/advance", method: "OPTIONS", handler: optionsHandler });
 http.route({ path: "/tickets/delete", method: "OPTIONS", handler: optionsHandler });
+http.route({ path: "/tickets/status", method: "OPTIONS", handler: optionsHandler });
 
 http.route({
   path: "/tickets",
@@ -119,6 +120,31 @@ http.route({
 
     await ctx.runMutation(api.tickets.remove, { ticketCode });
     return jsonResponse({ ok: true });
+  }),
+});
+
+http.route({
+  path: "/tickets/status",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const body = await parseJson(req);
+    const ticketCode = String((body as Record<string, unknown> | null)?.ticketCode || "").trim();
+    const status = String((body as Record<string, unknown> | null)?.status || "").trim();
+
+    if (!ticketCode) return jsonResponse({ error: "ticketCode is required" }, 400);
+    if (!["received", "repairing", "ready", "picked"].includes(status)) {
+      return jsonResponse({ error: "Invalid status" }, 400);
+    }
+
+    try {
+      const ticket = await ctx.runMutation(api.tickets.setStatus, {
+        ticketCode,
+        status: status as "received" | "repairing" | "ready" | "picked",
+      });
+      return jsonResponse({ ticket });
+    } catch (err) {
+      return jsonResponse({ error: err instanceof Error ? err.message : "Set status failed" }, 400);
+    }
   }),
 });
 

@@ -29,6 +29,7 @@ const ICON_PATHS = {
   search:   '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
   back:     '<path d="M15 18l-6-6 6-6"/>',
   phone:    '<path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3.1 19.5 19.5 0 01-6-6A19.8 19.8 0 012.1 4.2 2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.6a2 2 0 01-.5 2.1L8 9.6a16 16 0 006 6l1.2-1.2a2 2 0 012.1-.5c.8.3 1.7.5 2.6.6a2 2 0 011.7 2z"/>',
+  message:  '<path d="M21 15a2 2 0 01-2 2H8l-5 4V5a2 2 0 012-2h14a2 2 0 012 2z"/><path d="M8 8h8M8 12h5"/>',
   user:     '<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   check:    '<path d="M20 6L9 17l-5-5"/>',
@@ -449,6 +450,7 @@ function renderTicketDetail(id) {
   const ticket = state.tickets.find(t => getTicketCode(t) === id);
   if (!ticket) return '<div class="screen">Không tìm thấy phiếu.</div>';
   const ticketCode = getTicketCode(ticket);
+  const phoneHref = ticket.phone.replace(/\s/g, '');
 
   const overdue   = ticket.status !== 'picked' && ticket.status !== 'ready' && new Date(ticket.promised) < NOW;
   const nextLabel = { received:'Bắt đầu sửa', repairing:'Đã sửa xong', ready:'Khách đã lấy', picked:null }[ticket.status];
@@ -458,6 +460,13 @@ function renderTicketDetail(id) {
       <span class="info-label">${label}</span>
       <span class="info-value${danger ? ' danger' : ''}">${val}</span>
     </div>`;
+
+  const statusChoices = [
+    { key: 'received', label: 'Mới nhận' },
+    { key: 'repairing', label: 'Đang sửa' },
+    { key: 'ready', label: 'Xong rồi' },
+    { key: 'picked', label: 'Đã giao' },
+  ];
 
   return `<div style="padding-bottom:120px">
     <div class="back-bar">
@@ -482,14 +491,28 @@ function renderTicketDetail(id) {
     </div>` : ''}
 
     <div class="detail-section">
+      <div class="card status-edit-card">
+        <div class="status-edit-title">CHỈNH TRẠNG THÁI</div>
+        <div class="status-edit-grid">
+          ${statusChoices.map(s => `<button class="status-edit-btn${ticket.status===s.key?' active':''}" data-action="set-status" data-ticket-id="${ticketCode}" data-status="${s.key}">${s.label}</button>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
       <div class="card phone-card">
         <div class="phone-info">
           <div class="phone-label">SỐ ĐIỆN THOẠI</div>
           <div class="phone-number">${ticket.phone}</div>
         </div>
-        <a href="tel:${ticket.phone.replace(/\s/g,'')}" class="call-btn-lg">
-          ${icon('phone', 24, '#fff', 2.2)}
-        </a>
+        <div class="phone-actions">
+          <a href="sms:${phoneHref}" class="sms-btn-lg" aria-label="Nhắn tin khách hàng">
+            ${icon('message', 23, '#fff', 2.1)}
+          </a>
+          <a href="tel:${phoneHref}" class="call-btn-lg" aria-label="Gọi khách hàng">
+            ${icon('phone', 24, '#fff', 2.2)}
+          </a>
+        </div>
       </div>
     </div>
 
@@ -803,15 +826,27 @@ function attachListeners() {
     });
   }
 
+  app.querySelectorAll('[data-action="set-status"]').forEach(el => {
+    el.addEventListener('click', async () => {
+      const ticketCode = el.dataset.ticketId;
+      const status = el.dataset.status;
+      if (!ticketCode || !status) return;
+      try {
+        await convexRequest('/tickets/status', 'POST', { ticketCode, status });
+        await refreshTickets();
+        nav('ticket', { id: ticketCode });
+      } catch (err) {
+        alert('Không đổi được trạng thái phiếu.');
+      }
+    });
+  });
+
   app.querySelectorAll('[data-filter]').forEach(el => {
     el.addEventListener('click', () => { state.filter = el.dataset.filter; render(); });
   });
 
   const searchInput = app.querySelector('#search-input');
   if (searchInput) {
-    const pos = searchInput.value.length;
-    searchInput.focus();
-    searchInput.setSelectionRange(pos, pos);
     searchInput.addEventListener('input', e => { state.query = e.target.value; render(); });
   }
   const searchClear = app.querySelector('#search-clear');

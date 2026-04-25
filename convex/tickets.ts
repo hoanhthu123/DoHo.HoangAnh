@@ -94,3 +94,38 @@ export const remove = mutation({
     return { ok: true };
   },
 });
+
+export const setStatus = mutation({
+  args: {
+    ticketCode: v.string(),
+    status: v.union(
+      v.literal("received"),
+      v.literal("repairing"),
+      v.literal("ready"),
+      v.literal("picked"),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const ticket = await ctx.db
+      .query("tickets")
+      .withIndex("by_ticketCode", (q) => q.eq("ticketCode", args.ticketCode))
+      .unique();
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+
+    let finished = ticket.finished ?? null;
+    if (args.status === "ready" || args.status === "picked") {
+      finished = finished || new Date().toISOString();
+    } else {
+      finished = null;
+    }
+
+    await ctx.db.patch(ticket._id, {
+      status: args.status,
+      finished,
+    });
+
+    return await ctx.db.get(ticket._id);
+  },
+});
