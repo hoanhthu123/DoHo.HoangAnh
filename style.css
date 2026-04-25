@@ -124,9 +124,33 @@ a { text-decoration: none; color: inherit; }
 .ticket-card { padding: 14px 16px; cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .ticket-card:active { background: #f8f8f6; }
 .tc-top      { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.tc-main     { display: flex; align-items: flex-start; gap: 12px; }
+.tc-main-body { flex: 1; min-width: 0; }
 .tc-id       { font-family: var(--font-mono); font-size: 13px; color: var(--text-muted); font-weight: 600; }
 .tc-customer { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 4px; letter-spacing: -0.2px; }
 .tc-watch    { font-size: 15px; color: var(--text-muted); line-height: 1.4; margin-bottom: 10px; }
+.tc-thumb {
+  width: 74px;
+  height: 74px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: #F8FAFC;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.tc-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.tc-thumb-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .tc-footer   { display: flex; justify-content: space-between; align-items: center; padding-top: 10px; border-top: 1px solid var(--border-soft); }
 .tc-due      { display: flex; align-items: center; gap: 5px; font-size: 14px; color: var(--text-muted); font-weight: 500; }
 .tc-due.overdue { color: var(--danger); font-weight: 600; }
@@ -140,6 +164,33 @@ a { text-decoration: none; color: inherit; }
 .search-bar    { display: flex; align-items: center; gap: 10px; padding: 14px; background: var(--bg-sunken); border-radius: 12px; }
 .search-input  { flex: 1; border: none; background: none; outline: none; font-size: 17px; color: var(--text); }
 .search-clear  { background: none; border: none; padding: 4px; color: var(--text-muted); display: flex; }
+.date-filter-wrap { padding: 0 16px 14px; }
+.date-filter-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.date-field input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px 12px;
+  color: var(--text);
+  outline: none;
+}
+.date-filter-clear {
+  margin-top: 8px;
+  background: transparent;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 4px 0;
+}
 .filter-chips  { display: flex; gap: 8px; overflow-x: auto; padding: 0 16px 16px; scrollbar-width: none; }
 .filter-chips::-webkit-scrollbar { display: none; }
 .filter-chip   { padding: 10px 16px; border-radius: 999px; background: var(--bg); color: var(--text); border: 1.5px solid var(--border); font-size: 15px; font-weight: 600; white-space: nowrap; }

@@ -105,6 +105,8 @@ const state = {
   ownerName: 'Anh Hoàng',
   filter:       'all',
   query:        '',
+  dateFrom:     '',
+  dateTo:       '',
   analyticsMonth: 0,
 };
 
@@ -324,20 +326,27 @@ function statusBadge(status) {
 
 // ── Ticket card ──────────────────────────────────────────────────
 function ticketCard(ticket) {
-  const overdue = ticket.status !== 'picked' && ticket.status !== 'ready' && new Date(ticket.promised) < NOW;
   const ticketCode = getTicketCode(ticket);
+  const watchImage = ticket.watchImage
+    ? `<img class="tc-thumb-img" src="${ticket.watchImage}" alt="Ảnh đồng hồ ${ticketCode}">`
+    : `<div class="tc-thumb-placeholder">${icon('camera', 18, COLORS.textSubtle, 2)}</div>`;
   return `
     <div class="ticket-card card" data-ticket-id="${ticketCode}" role="button" tabindex="0">
       <div class="tc-top">
         ${statusBadge(ticket.status)}
         <span class="tc-id">${ticketCode}</span>
       </div>
-      <div class="tc-customer">${ticket.customer}</div>
-      <div class="tc-watch">${ticket.brand} ${ticket.model} — ${ticket.issue}</div>
+      <div class="tc-main">
+        <div class="tc-main-body">
+          <div class="tc-customer">${ticket.customer}</div>
+          <div class="tc-watch">${ticket.brand} ${ticket.model} — ${ticket.issue}</div>
+        </div>
+        <div class="tc-thumb">${watchImage}</div>
+      </div>
       <div class="tc-footer">
-        <span class="tc-due${overdue ? ' overdue' : ''}">
-          ${icon('clock', 15, overdue ? COLORS.danger : COLORS.textMuted, 2.2)}
-          Hẹn ${formatDate(ticket.promised)}${overdue ? ' · TRỄ' : ''}
+        <span class="tc-due">
+          ${icon('clock', 15, COLORS.textMuted, 2.2)}
+          Nhận ${formatDate(ticket.received)}
         </span>
         <span class="tc-price">${formatVND(ticket.price)}</span>
       </div>
@@ -424,6 +433,16 @@ function renderTicketList() {
       getTicketCode(t).toLowerCase().includes(q) || t.brand.toLowerCase().includes(q)
     );
   }
+
+  if (state.dateFrom) {
+    const fromDate = new Date(`${state.dateFrom}T00:00:00`);
+    list = list.filter(t => new Date(t.received) >= fromDate);
+  }
+  if (state.dateTo) {
+    const toDate = new Date(`${state.dateTo}T23:59:59.999`);
+    list = list.filter(t => new Date(t.received) <= toDate);
+  }
+
   list.sort((a,b) => new Date(b.received) - new Date(a.received));
 
   const filters = [
@@ -446,6 +465,19 @@ function renderTicketList() {
         ${state.query ? `<button class="search-clear" id="search-clear">${icon('x', 18)}</button>` : ''}
       </div>
     </div>
+    <div class="date-filter-wrap">
+      <div class="date-filter-grid">
+        <label class="date-field">
+          <span>Từ ngày</span>
+          <input id="filter-from" type="date" value="${state.dateFrom}">
+        </label>
+        <label class="date-field">
+          <span>Đến ngày</span>
+          <input id="filter-to" type="date" value="${state.dateTo}">
+        </label>
+      </div>
+      ${(state.dateFrom || state.dateTo) ? `<button class="date-filter-clear" id="filter-date-clear">Xoá lọc ngày</button>` : ''}
+    </div>
     <div class="filter-chips">
       ${filters.map(f => `<button class="filter-chip${state.filter===f.key?' active':''}" data-filter="${f.key}">${f.label} · ${counts[f.key]}</button>`).join('')}
     </div>
@@ -464,7 +496,6 @@ function renderTicketDetail(id) {
   const ticketCode = getTicketCode(ticket);
   const phoneHref = ticket.phone.replace(/\s/g, '');
 
-  const overdue   = ticket.status !== 'picked' && ticket.status !== 'ready' && new Date(ticket.promised) < NOW;
   const nextLabel = { received:'Bắt đầu sửa', repairing:'Đã sửa xong', ready:'Khách đã lấy', picked:null }[ticket.status];
 
   const infoRow = (label, val, danger = false) => `
@@ -552,8 +583,6 @@ function renderTicketDetail(id) {
     <div class="detail-section">
       <div class="card">
         ${infoRow('Nhận máy', formatDateTime(ticket.received))}
-        <div class="line-div"></div>
-        ${infoRow('Hẹn trả', formatDateTime(ticket.promised) + (overdue ? ' <strong>· TRỄ</strong>' : ''), overdue)}
         ${ticket.finished ? `<div class="line-div"></div>${infoRow('Sửa xong', formatDateTime(ticket.finished))}` : ''}
         <div class="line-div"></div>
         <div class="price-line">
@@ -959,6 +988,31 @@ function attachListeners() {
   const searchClear = app.querySelector('#search-clear');
   if (searchClear) {
     searchClear.addEventListener('click', () => { state.query = ''; render(); });
+  }
+
+  const filterFrom = app.querySelector('#filter-from');
+  if (filterFrom) {
+    filterFrom.addEventListener('input', e => {
+      state.dateFrom = e.target.value;
+      render();
+    });
+  }
+
+  const filterTo = app.querySelector('#filter-to');
+  if (filterTo) {
+    filterTo.addEventListener('input', e => {
+      state.dateTo = e.target.value;
+      render();
+    });
+  }
+
+  const filterDateClear = app.querySelector('#filter-date-clear');
+  if (filterDateClear) {
+    filterDateClear.addEventListener('click', () => {
+      state.dateFrom = '';
+      state.dateTo = '';
+      render();
+    });
   }
 
   const createBtn = app.querySelector('#create-submit-btn');
