@@ -139,6 +139,7 @@ export const update = mutation({
     model: v.optional(v.string()),
     issue: v.string(),
     note: v.optional(v.string()),
+    watchImage: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const ticket = await ctx.db
@@ -156,6 +157,7 @@ export const update = mutation({
       model: args.model,
       issue: args.issue,
       note: args.note,
+      watchImage: args.watchImage,
     });
 
     return await ctx.db.get(ticket._id);

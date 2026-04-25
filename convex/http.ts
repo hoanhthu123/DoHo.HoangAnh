@@ -161,6 +161,7 @@ http.route({
     const model = String((body as Record<string, unknown> | null)?.model || "").trim();
     const issue = String((body as Record<string, unknown> | null)?.issue || "").trim();
     const note = String((body as Record<string, unknown> | null)?.note || "").trim();
+    const watchImage = String((body as Record<string, unknown> | null)?.watchImage || "").trim();
 
     if (!ticketCode) return jsonResponse({ error: "ticketCode is required" }, 400);
     if (!customer || !phone || !brand || !issue) {
@@ -176,6 +177,7 @@ http.route({
         model: model || undefined,
         issue,
         note: note || undefined,
+        watchImage: watchImage || undefined,
       });
       return jsonResponse({ ticket });
     } catch (err) {

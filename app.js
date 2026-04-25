@@ -625,6 +625,15 @@ function renderEditTicket(id) {
   </div>`;
 
   const esc = s => String(s || '').replace(/"/g, '&quot;');
+  const watchImagePreview = ticket.watchImage
+    ? `<div class="watch-photo-preview" id="edit-watch-photo-preview-wrap">
+        <img id="edit-watch-photo-preview" src="${ticket.watchImage}" alt="Ảnh đồng hồ hiện tại">
+        <button type="button" id="clear-edit-watch-photo">Xoá ảnh</button>
+      </div>`
+    : `<div class="watch-photo-preview" id="edit-watch-photo-preview-wrap" hidden>
+        <img id="edit-watch-photo-preview" alt="Ảnh đồng hồ vừa chụp">
+        <button type="button" id="clear-edit-watch-photo">Xoá ảnh</button>
+      </div>`;
 
   return `<div style="padding-bottom:140px">
     <div class="create-hdr">
@@ -643,6 +652,14 @@ function renderEditTicket(id) {
     `)}
 
     ${fb('Đồng hồ', `
+      <div class="watch-photo-tools">
+        <button class="btn-watch-photo" id="btn-edit-watch-photo" type="button">
+          ${icon('camera', 18, COLORS.accent, 2.1)} Chụp hình đồng hồ
+        </button>
+        <input id="edit-watch-photo-input" type="file" accept="image/*" capture="environment" hidden>
+        <input id="e-watch-image" type="hidden" value="${esc(ticket.watchImage)}">
+        ${watchImagePreview}
+      </div>
       ${bf('Hãng', true, `<input id="e-brand" class="bf-input" value="${esc(ticket.brand)}">`)}
       <div class="field-div"></div>
       ${bf('Model (không bắt buộc)', false, `<input id="e-model" class="bf-input" value="${esc(ticket.model)}">`)}
@@ -1151,6 +1168,45 @@ function attachListeners() {
 
   const editBtn = app.querySelector('#edit-submit-btn');
   if (editBtn) {
+    const editWatchPhotoBtn = app.querySelector('#btn-edit-watch-photo');
+    const editWatchPhotoInput = app.querySelector('#edit-watch-photo-input');
+    const editWatchImageField = app.querySelector('#e-watch-image');
+    const editWatchPreviewWrap = app.querySelector('#edit-watch-photo-preview-wrap');
+    const editWatchPreview = app.querySelector('#edit-watch-photo-preview');
+    const clearEditWatchPhotoBtn = app.querySelector('#clear-edit-watch-photo');
+
+    if (editWatchPhotoBtn && editWatchPhotoInput && editWatchImageField && editWatchPreviewWrap && editWatchPreview) {
+      editWatchPhotoBtn.addEventListener('click', () => editWatchPhotoInput.click());
+
+      editWatchPhotoInput.addEventListener('change', async () => {
+        const file = editWatchPhotoInput.files?.[0];
+        if (!file) return;
+
+        editWatchPhotoBtn.disabled = true;
+        editWatchPhotoBtn.textContent = 'Đang xử lý ảnh...';
+        try {
+          const imageDataUrl = await imageFileToDataUrl(file);
+          editWatchImageField.value = imageDataUrl;
+          editWatchPreview.src = imageDataUrl;
+          editWatchPreviewWrap.hidden = false;
+        } catch (err) {
+          alert('Không xử lý được ảnh. Vui lòng thử lại.');
+        } finally {
+          editWatchPhotoInput.value = '';
+          editWatchPhotoBtn.disabled = false;
+          editWatchPhotoBtn.innerHTML = `${icon('camera', 18, COLORS.accent, 2.1)} Chụp hình đồng hồ`;
+        }
+      });
+    }
+
+    if (clearEditWatchPhotoBtn && editWatchImageField && editWatchPreviewWrap && editWatchPreview) {
+      clearEditWatchPhotoBtn.addEventListener('click', () => {
+        editWatchImageField.value = '';
+        editWatchPreview.src = '';
+        editWatchPreviewWrap.hidden = true;
+      });
+    }
+
     editBtn.addEventListener('click', async () => {
       const ticketCode = editBtn.dataset.ticketId;
       if (!ticketCode) return;
@@ -1173,6 +1229,7 @@ function attachListeners() {
         model: val('e-model'),
         issue: val('e-issue'),
         note: val('e-note'),
+        watchImage: val('e-watch-image'),
       };
 
       patchTicketLocal(ticketCode, patch);
