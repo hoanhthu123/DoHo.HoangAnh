@@ -129,3 +129,35 @@ export const setStatus = mutation({
     return await ctx.db.get(ticket._id);
   },
 });
+
+export const update = mutation({
+  args: {
+    ticketCode: v.string(),
+    customer: v.string(),
+    phone: v.string(),
+    brand: v.string(),
+    model: v.optional(v.string()),
+    issue: v.string(),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const ticket = await ctx.db
+      .query("tickets")
+      .withIndex("by_ticketCode", (q) => q.eq("ticketCode", args.ticketCode))
+      .unique();
+    if (!ticket) {
+      throw new Error("Ticket not found");
+    }
+
+    await ctx.db.patch(ticket._id, {
+      customer: args.customer,
+      phone: args.phone,
+      brand: args.brand,
+      model: args.model,
+      issue: args.issue,
+      note: args.note,
+    });
+
+    return await ctx.db.get(ticket._id);
+  },
+});

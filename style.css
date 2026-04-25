@@ -153,8 +153,28 @@ a { text-decoration: none; color: inherit; }
 .detail-head   { padding: 6px 20px 16px; }
 .detail-badges { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .detail-id     { font-family: var(--font-mono); font-size: 14px; color: var(--text-muted); font-weight: 600; }
+.detail-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
 .detail-customer { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 4px; line-height: 1.2; }
 .detail-watch  { font-size: 17px; color: var(--text-muted); }
+.btn-edit-ticket {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #EFF6FF;
+  color: var(--accent);
+  border: 1px solid #93C5FD;
+  border-radius: 10px;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+  margin-top: 2px;
+}
 .detail-action { padding: 0 16px 18px; }
 .btn-advance   {
   width: 100%; padding: 20px; border-radius: 14px;

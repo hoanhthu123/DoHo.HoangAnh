@@ -33,6 +33,7 @@ const ICON_PATHS = {
   user:     '<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>',
   clock:    '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
   check:    '<path d="M20 6L9 17l-5-5"/>',
+  edit:     '<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/>',
   x:        '<path d="M18 6L6 18M6 6l12 12"/>',
   alert:    '<path d="M12 9v4M12 17h.01"/><path d="M10.3 3.9L2.3 18a2 2 0 001.7 3h16a2 2 0 001.7-3L13.7 3.9a2 2 0 00-3.4 0z"/>',
   chevron:  '<path d="M9 6l6 6-6 6"/>',
@@ -143,6 +144,17 @@ function normalizeTicket(raw) {
     price: typeof raw.price === 'number' ? raw.price : 0,
     finished: raw.finished || null,
   };
+}
+
+function patchTicketLocal(ticketCode, patch) {
+  state.tickets = state.tickets.map(t => (getTicketCode(t) === ticketCode ? { ...t, ...patch } : t));
+}
+
+function finishedByStatus(nextStatus, currentFinished) {
+  if (nextStatus === 'ready' || nextStatus === 'picked') {
+    return currentFinished || new Date().toISOString();
+  }
+  return null;
 }
 
 async function convexRequest(path, method = 'GET', body = null) {
@@ -480,7 +492,12 @@ function renderTicketDetail(id) {
         ${statusBadge(ticket.status)}
         <span class="detail-id">${ticketCode}</span>
       </div>
-      <div class="detail-customer">${ticket.customer}</div>
+      <div class="detail-name-row">
+        <div class="detail-customer">${ticket.customer}</div>
+        <button class="btn-edit-ticket" data-nav-edit-ticket="${ticketCode}">
+          ${icon('edit', 16, COLORS.accent, 2.1)} Sửa
+        </button>
+      </div>
       <div class="detail-watch">${ticket.brand} ${ticket.model}</div>
     </div>
 
@@ -559,6 +576,57 @@ function renderTicketDetail(id) {
       <button class="btn-delete" data-action="delete" data-ticket-id="${ticketCode}">
         ${icon('trash', 20, COLORS.danger, 2)} Xoá phiếu
       </button>
+    </div>
+  </div>`;
+}
+
+function renderEditTicket(id) {
+  const ticket = state.tickets.find(t => getTicketCode(t) === id);
+  if (!ticket) return '<div class="screen">Không tìm thấy phiếu.</div>';
+  const ticketCode = getTicketCode(ticket);
+
+  const fb = (title, inner) => `<div class="form-block">
+    <div class="fb-title">${title}</div>
+    <div class="card fb-card">${inner}</div>
+  </div>`;
+
+  const bf = (label, req, inner) => `<div class="big-field">
+    <div class="bf-label">${label}${req ? '<span class="req"> *</span>' : ''}</div>
+    ${inner}
+  </div>`;
+
+  const esc = s => String(s || '').replace(/"/g, '&quot;');
+
+  return `<div style="padding-bottom:140px">
+    <div class="create-hdr">
+      <button class="btn-cancel" data-nav="ticket" data-ticket-id="${ticketCode}">Huỷ</button>
+      <div style="width:60px"></div>
+    </div>
+    <div class="create-title-block">
+      <div class="create-main-title">Sửa phiếu</div>
+      <div class="create-id-line">Mã phiếu: <span class="mono">${ticketCode}</span></div>
+    </div>
+
+    ${fb('Khách hàng', `
+      ${bf('Tên khách', true, `<input id="e-customer" class="bf-input" value="${esc(ticket.customer)}">`)}
+      <div class="field-div"></div>
+      ${bf('Số điện thoại', true, `<input id="e-phone" class="bf-input mono" value="${esc(ticket.phone)}" inputmode="tel">`)}
+    `)}
+
+    ${fb('Đồng hồ', `
+      ${bf('Hãng', true, `<input id="e-brand" class="bf-input" value="${esc(ticket.brand)}">`)}
+      <div class="field-div"></div>
+      ${bf('Model (không bắt buộc)', false, `<input id="e-model" class="bf-input" value="${esc(ticket.model)}">`)}
+      <div class="field-div"></div>
+      ${bf('Hỏng gì?', true, `<textarea id="e-issue" class="bf-input" rows="2">${esc(ticket.issue)}</textarea>`)}
+    `)}
+
+    ${fb('Ghi chú (không bắt buộc)', `
+      ${bf('', false, `<textarea id="e-note" class="bf-input" rows="2">${esc(ticket.note)}</textarea>`)}
+    `)}
+
+    <div class="create-submit-bar">
+      <button class="btn-submit" id="edit-submit-btn" data-ticket-id="${ticketCode}">Lưu thay đổi</button>
     </div>
   </div>`;
 }
@@ -763,7 +831,7 @@ function renderSettings() {
 // ── Render ───────────────────────────────────────────────────────
 function render() {
   const route   = state.route;
-  const hideTab = route.name === 'ticket' || route.name === 'create';
+  const hideTab = route.name === 'ticket' || route.name === 'create' || route.name === 'edit';
   const active  = route.name === 'ticket' ? 'tickets' : route.name;
 
   let screen = '';
@@ -771,6 +839,7 @@ function render() {
   else if (route.name === 'tickets')   screen = renderTicketList();
   else if (route.name === 'ticket')    screen = renderTicketDetail(route.id);
   else if (route.name === 'create')    screen = renderCreateTicket();
+  else if (route.name === 'edit')      screen = renderEditTicket(route.id);
   else if (route.name === 'analytics') screen = renderAnalytics();
   else if (route.name === 'settings')  screen = renderSettings();
 
@@ -785,7 +854,18 @@ function attachListeners() {
   const app = document.getElementById('app');
 
   app.querySelectorAll('[data-nav]').forEach(el => {
-    el.addEventListener('click', e => { e.preventDefault(); nav(el.dataset.nav); });
+    el.addEventListener('click', e => {
+      e.preventDefault();
+      if (el.dataset.nav === 'ticket' && el.dataset.ticketId) {
+        nav('ticket', { id: el.dataset.ticketId });
+        return;
+      }
+      nav(el.dataset.nav);
+    });
+  });
+
+  app.querySelectorAll('[data-nav-edit-ticket]').forEach(el => {
+    el.addEventListener('click', () => nav('edit', { id: el.dataset.navEditTicket }));
   });
 
   app.querySelectorAll('[data-nav-filter]').forEach(el => {
@@ -802,11 +882,26 @@ function attachListeners() {
     advBtn.addEventListener('click', async () => {
       const id     = advBtn.dataset.ticketId;
       if (!id) return;
+
+      const ticket = state.tickets.find(t => getTicketCode(t) === id);
+      if (!ticket) return;
+      const flow = ['received', 'repairing', 'ready', 'picked'];
+      const next = flow[flow.indexOf(ticket.status) + 1];
+      if (!next) return;
+
+      patchTicketLocal(id, {
+        status: next,
+        finished: finishedByStatus(next, ticket.finished),
+      });
+      nav('ticket', { id });
+
       try {
         await convexRequest('/tickets/advance', 'POST', { ticketCode: id });
         await refreshTickets();
         nav('ticket', { id });
       } catch (err) {
+        await refreshTickets();
+        nav('ticket', { id });
         alert('Không cập nhật được trạng thái phiếu.');
       }
     });
@@ -831,11 +926,23 @@ function attachListeners() {
       const ticketCode = el.dataset.ticketId;
       const status = el.dataset.status;
       if (!ticketCode || !status) return;
+
+      const ticket = state.tickets.find(t => getTicketCode(t) === ticketCode);
+      if (!ticket || ticket.status === status) return;
+
+      patchTicketLocal(ticketCode, {
+        status,
+        finished: finishedByStatus(status, ticket.finished),
+      });
+      nav('ticket', { id: ticketCode });
+
       try {
         await convexRequest('/tickets/status', 'POST', { ticketCode, status });
         await refreshTickets();
         nav('ticket', { id: ticketCode });
       } catch (err) {
+        await refreshTickets();
+        nav('ticket', { id: ticketCode });
         alert('Không đổi được trạng thái phiếu.');
       }
     });
@@ -984,6 +1091,47 @@ function attachListeners() {
         alert('Không tạo được phiếu. Vui lòng thử lại.');
       } finally {
         createBtn.disabled = false;
+      }
+    });
+  }
+
+  const editBtn = app.querySelector('#edit-submit-btn');
+  if (editBtn) {
+    editBtn.addEventListener('click', async () => {
+      const ticketCode = editBtn.dataset.ticketId;
+      if (!ticketCode) return;
+
+      const val = id => (document.getElementById(id)?.value || '').trim();
+      const required = ['e-customer', 'e-phone', 'e-brand', 'e-issue'];
+      let ok = true;
+      required.forEach(fid => {
+        const el = document.getElementById(fid);
+        const empty = !el?.value.trim();
+        if (el) el.classList.toggle('field-error', empty);
+        if (empty) ok = false;
+      });
+      if (!ok) return;
+
+      const patch = {
+        customer: val('e-customer'),
+        phone: val('e-phone'),
+        brand: val('e-brand'),
+        model: val('e-model'),
+        issue: val('e-issue'),
+        note: val('e-note'),
+      };
+
+      patchTicketLocal(ticketCode, patch);
+      nav('ticket', { id: ticketCode });
+
+      try {
+        await convexRequest('/tickets/update', 'POST', { ticketCode, ...patch });
+        await refreshTickets();
+        nav('ticket', { id: ticketCode });
+      } catch (err) {
+        await refreshTickets();
+        nav('ticket', { id: ticketCode });
+        alert('Không lưu được chỉnh sửa phiếu.');
       }
     });
   }

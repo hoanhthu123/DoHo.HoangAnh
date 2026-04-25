@@ -37,6 +37,7 @@ http.route({ path: "/tickets", method: "OPTIONS", handler: optionsHandler });
 http.route({ path: "/tickets/advance", method: "OPTIONS", handler: optionsHandler });
 http.route({ path: "/tickets/delete", method: "OPTIONS", handler: optionsHandler });
 http.route({ path: "/tickets/status", method: "OPTIONS", handler: optionsHandler });
+http.route({ path: "/tickets/update", method: "OPTIONS", handler: optionsHandler });
 
 http.route({
   path: "/tickets",
@@ -144,6 +145,41 @@ http.route({
       return jsonResponse({ ticket });
     } catch (err) {
       return jsonResponse({ error: err instanceof Error ? err.message : "Set status failed" }, 400);
+    }
+  }),
+});
+
+http.route({
+  path: "/tickets/update",
+  method: "POST",
+  handler: httpAction(async (ctx, req) => {
+    const body = await parseJson(req);
+    const ticketCode = String((body as Record<string, unknown> | null)?.ticketCode || "").trim();
+    const customer = String((body as Record<string, unknown> | null)?.customer || "").trim();
+    const phone = String((body as Record<string, unknown> | null)?.phone || "").trim();
+    const brand = String((body as Record<string, unknown> | null)?.brand || "").trim();
+    const model = String((body as Record<string, unknown> | null)?.model || "").trim();
+    const issue = String((body as Record<string, unknown> | null)?.issue || "").trim();
+    const note = String((body as Record<string, unknown> | null)?.note || "").trim();
+
+    if (!ticketCode) return jsonResponse({ error: "ticketCode is required" }, 400);
+    if (!customer || !phone || !brand || !issue) {
+      return jsonResponse({ error: "Missing required fields" }, 400);
+    }
+
+    try {
+      const ticket = await ctx.runMutation(api.tickets.update, {
+        ticketCode,
+        customer,
+        phone,
+        brand,
+        model: model || undefined,
+        issue,
+        note: note || undefined,
+      });
+      return jsonResponse({ ticket });
+    } catch (err) {
+      return jsonResponse({ error: err instanceof Error ? err.message : "Update failed" }, 400);
     }
   }),
 });
